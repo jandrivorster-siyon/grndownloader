@@ -165,7 +165,7 @@ async function run() {
   const dates = buildDateRange();
   console.log(`Starting download for ${dates.length} day(s) into ${DOWNLOADS_DIR}\n`);
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ acceptDownloads: true });
   const page    = await context.newPage();
 
