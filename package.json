@@ -1,0 +1,14 @@
+{
+  "name": "grn-downloader",
+  "version": "1.0.0",
+  "description": "Daily GRN file downloader for Woolworths Supplier Portal",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "install:browsers": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "playwright": "^1.44.0"
+  }
+}
