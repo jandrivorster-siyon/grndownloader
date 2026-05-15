@@ -83,8 +83,32 @@ async function selectSupplier(page) {
 }
 
 async function navigateToGrnPage(page) {
-  await page.goto(`${PORTAL_URL}${GRN_PAGE}`);
-  await page.waitForLoadState('networkidle');
+  // Try clicking through the nav menu first — direct goto is rejected by ASP.NET session state.
+  // Look for a "Reports" or "GRN" link in the nav, then a "Download" sub-link.
+  const navLinks = [
+    page.getByRole('link', { name: /reports/i }),
+    page.getByRole('link', { name: /grn/i }),
+    page.getByRole('link', { name: /download/i }),
+  ];
+
+  let navigatedViaMenu = false;
+  for (const link of navLinks) {
+    if (await link.count() > 0) {
+      await link.first().click();
+      await page.waitForLoadState('networkidle');
+      if (page.url().includes('GRNReportFilter')) {
+        navigatedViaMenu = true;
+        break;
+      }
+    }
+  }
+
+  // Fall back to direct navigation if menu didn't get us there
+  if (!navigatedViaMenu && !page.url().includes('GRNReportFilter')) {
+    await page.goto(`${PORTAL_URL}${GRN_PAGE}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+  }
+
   console.log('  On GRN Report page');
 }
 
@@ -147,8 +171,8 @@ async function run() {
 
   try {
     await login(page);
-    await selectSupplier(page);
     await navigateToGrnPage(page);
+    await selectSupplier(page);
 
     for (const date of dates) {
       console.log(`Processing ${formatDate(date)} ...`);
