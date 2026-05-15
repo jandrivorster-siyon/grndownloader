@@ -93,16 +93,11 @@ async function navigateToGrnPage(page) {
   await wait(3000);
   console.log('  Clicked Reports and Downloads — current URL:', page.url());
 
-  // Step 2 — if not yet on the GRN page, look for a GRN sub-link in the expanded menu
-  if (!page.url().includes('GRNReportFilter')) {
-    const grnLink = page.getByRole('link', { name: /grn/i }).first();
-    if (await grnLink.count() > 0) {
-      await grnLink.click();
-      await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
-      await wait(3000);
-      console.log('  Clicked GRN link — current URL:', page.url());
-    }
-  }
+  // Step 2 — click "GRN Print & Download" from the Financial Reports submenu
+  await page.getByRole('link', { name: 'GRN Print & Download' }).click();
+  await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
+  await wait(3000);
+  console.log('  Clicked GRN Print & Download — current URL:', page.url());
 
   console.log('  On GRN Report page');
 }
