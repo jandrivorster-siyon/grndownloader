@@ -81,7 +81,7 @@ async function selectSupplier(page) {
   if (await dropdown.count() > 0) {
     await dropdown.selectOption({ value: SUPPLIER_CODE });
     await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
-    await wait(5000);
+    await wait(10000);
     console.log(`  Supplier selected: ${SUPPLIER_CODE}`);
   }
 }
