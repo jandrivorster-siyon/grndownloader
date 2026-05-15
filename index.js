@@ -87,32 +87,21 @@ async function selectSupplier(page) {
 }
 
 async function navigateToGrnPage(page) {
-  // Try clicking through the nav menu first — direct goto is rejected by ASP.NET session state.
-  // Look for a "Reports" or "GRN" link in the nav, then a "Download" sub-link.
-  const navLinks = [
-    page.getByRole('link', { name: /reports/i }),
-    page.getByRole('link', { name: /grn/i }),
-    page.getByRole('link', { name: /download/i }),
-  ];
+  // Step 1 — click the top-level "Reports and Downloads" menu item
+  await page.getByRole('link', { name: 'Reports and Downloads' }).click();
+  await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
+  await wait(3000);
+  console.log('  Clicked Reports and Downloads — current URL:', page.url());
 
-  let navigatedViaMenu = false;
-  for (const link of navLinks) {
-    if (await link.count() > 0) {
-      await link.first().click();
+  // Step 2 — if not yet on the GRN page, look for a GRN sub-link in the expanded menu
+  if (!page.url().includes('GRNReportFilter')) {
+    const grnLink = page.getByRole('link', { name: /grn/i }).first();
+    if (await grnLink.count() > 0) {
+      await grnLink.click();
       await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
-      await wait(2000);
-      if (page.url().includes('GRNReportFilter')) {
-        navigatedViaMenu = true;
-        break;
-      }
+      await wait(3000);
+      console.log('  Clicked GRN link — current URL:', page.url());
     }
-  }
-
-  // Fall back to direct navigation if menu didn't get us there
-  if (!navigatedViaMenu && !page.url().includes('GRNReportFilter')) {
-    await page.goto(`${PORTAL_URL}${GRN_PAGE}`, { waitUntil: 'domcontentloaded', timeout: TIMEOUT_MS });
-    await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
-    await wait(2000);
   }
 
   console.log('  On GRN Report page');
