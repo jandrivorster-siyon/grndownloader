@@ -57,14 +57,17 @@ function versionedPath(dir, stem, ext) {
 }
 
 async function login(page) {
-  // TODO: confirm login page path — update if portal redirects elsewhere
   await page.goto(PORTAL_URL);
   await page.waitForLoadState('networkidle');
 
-  // TODO: update selectors if login field names differ on your portal
-  await page.locator('input[name*="txtUsername"], input[name*="UserName"], input[type="text"]').first().fill(USERNAME);
-  await page.locator('input[name*="txtPassword"], input[name*="Password"], input[type="password"]').first().fill(PASSWORD);
-  await page.locator('input[type="submit"], button[type="submit"]').first().click();
+  const usernameField = page.locator('input[name*="txtUsername"], input[name*="UserName"], input[type="text"]').first();
+  const passwordField = page.locator('input[name*="txtPassword"], input[name*="Password"], input[type="password"]').first();
+
+  await usernameField.fill(USERNAME);
+  await passwordField.fill(PASSWORD);
+
+  // Press Enter to submit — more reliable than clicking a button that may be off-screen
+  await passwordField.press('Enter');
   await page.waitForLoadState('networkidle');
 
   console.log('  Logged in');
