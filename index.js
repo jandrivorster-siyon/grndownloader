@@ -9,6 +9,9 @@ const PASSWORD      = process.env.PORTAL_PASSWORD;
 const SUPPLIER_CODE = process.env.SUPPLIER_CODE;
 const DAYS_BACK     = parseInt(process.env.DAYS_BACK || '30', 10);
 const DOWNLOADS_DIR = path.resolve(process.env.DOWNLOADS_DIR || 'downloads');
+const TIMEOUT_MS    = parseInt(process.env.TIMEOUT_MS || '120000', 10); // default 2 minutes per action
+
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ASP.NET field names extracted from HAR
 const FIELDS = {
@@ -57,8 +60,8 @@ function versionedPath(dir, stem, ext) {
 }
 
 async function login(page) {
-  await page.goto(PORTAL_URL);
-  await page.waitForLoadState('networkidle');
+  await page.goto(PORTAL_URL, { timeout: TIMEOUT_MS });
+  await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
 
   const usernameField = page.locator('input[name*="txtUsername"], input[name*="UserName"], input[type="text"]').first();
   const passwordField = page.locator('input[name*="txtPassword"], input[name*="Password"], input[type="password"]').first();
@@ -68,7 +71,7 @@ async function login(page) {
 
   // Press Enter to submit — more reliable than clicking a button that may be off-screen
   await passwordField.press('Enter');
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
 
   console.log('  Logged in');
 }
@@ -77,7 +80,8 @@ async function selectSupplier(page) {
   const dropdown = page.locator(`select[name="${FIELDS.supplier}"]`);
   if (await dropdown.count() > 0) {
     await dropdown.selectOption({ value: SUPPLIER_CODE });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
+    await wait(2000);
     console.log(`  Supplier selected: ${SUPPLIER_CODE}`);
   }
 }
@@ -95,7 +99,8 @@ async function navigateToGrnPage(page) {
   for (const link of navLinks) {
     if (await link.count() > 0) {
       await link.first().click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
+      await wait(2000);
       if (page.url().includes('GRNReportFilter')) {
         navigatedViaMenu = true;
         break;
@@ -105,8 +110,9 @@ async function navigateToGrnPage(page) {
 
   // Fall back to direct navigation if menu didn't get us there
   if (!navigatedViaMenu && !page.url().includes('GRNReportFilter')) {
-    await page.goto(`${PORTAL_URL}${GRN_PAGE}`, { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.goto(`${PORTAL_URL}${GRN_PAGE}`, { waitUntil: 'domcontentloaded', timeout: TIMEOUT_MS });
+    await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
+    await wait(2000);
   }
 
   console.log('  On GRN Report page');
@@ -118,17 +124,20 @@ async function downloadForDate(page, date, downloadsDir) {
 
   // Step 4 — select "Date Range" radio and fill start + end with the same day
   await page.locator(`input[name="${FIELDS.filterOn}"][value="radDateRange"]`).check();
+  await wait(500);
 
   // The portal uses both a hidden input and a visible text input for dates
   await page.locator(`input[name="${FIELDS.startDateHidden}"]`).fill(dateStr);
   await page.locator(`input[name="${FIELDS.startDate}"]`).fill(dateStr);
   await page.locator(`input[name="${FIELDS.endDateHidden}"]`).fill(dateStr);
   await page.locator(`input[name="${FIELDS.endDate}"]`).fill(dateStr);
+  await wait(500);
 
   // Step 5 — click the List/Search button to load GRN results
   // TODO: confirm button text; common labels are "List", "Search", "Filter", "Show"
   await page.locator('input[type="submit"][value*="List"], input[type="submit"][value*="Search"], input[type="submit"][value*="Filter"]').first().click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('networkidle', { timeout: TIMEOUT_MS });
+  await wait(2000);
 
   // Check for no-results state before proceeding
   const noResults = await page.locator('text=/no records|no data|no grn/i').count();
@@ -148,7 +157,7 @@ async function downloadForDate(page, date, downloadsDir) {
   const destPath = versionedPath(downloadsDir, fileStem, '.txt');
 
   const [download] = await Promise.all([
-    page.waitForEvent('download'),
+    page.waitForEvent('download', { timeout: TIMEOUT_MS }),
     page.locator('input[value="Download GRNs"]').last().click(),
   ]);
 
@@ -168,6 +177,7 @@ async function run() {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({ acceptDownloads: true });
   const page    = await context.newPage();
+  page.setDefaultTimeout(TIMEOUT_MS);
 
   try {
     await login(page);
